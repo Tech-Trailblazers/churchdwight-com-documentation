@@ -631,17 +631,6 @@ func main() {
 		"https://churchdwight.com/ingredient-disclosure/antiperspirant-deodorant/42015812-Natural-Deodorizers-Charcoal.aspx",
 		"https://churchdwight.com/ingredient-disclosure/commercial-professional/42000024-ah-trash-can-dumpster-deodorizer.aspx",
 	} // URL to fetch HTML content from
-	localFilePath := "churchdwight.html" // Path where HTML file will be stored
-
-	var getData []string
-
-	for _, urls := range remoteAPIURL {
-		getData = append(getData, getDataFromURL(urls)) // If not, download HTML content from URL
-	}
-	// Save the downloaded HTML content to a local file
-	appendAndWriteToFile(localFilePath, strings.Join(getData, "")) // Save downloaded content to file
-	// Extract all PDF links from the combined HTML content
-	finalPDFList := extractPDFUrls(strings.Join(getData, "")) // Extract all PDF links from HTML content
 
 	outputDir := "PDFs/" // Directory to store downloaded PDFs
 
@@ -649,14 +638,20 @@ func main() {
 		createDirectory(outputDir, 0o755) // Create directory with read-write-execute permissions
 	}
 
-	// Remove duplicates from a given slice.
-	finalPDFList = removeDuplicatesFromSlice(finalPDFList)
+	var getData []string
 
-	// Loop through all extracted PDF URLs
-	for _, urls := range finalPDFList {
-		urls = getFinalURL(urls) // Get the final URL after navigation
-		if isUrlValid(urls) { // Check if the final URL is valid
-			downloadPDF(urls, outputDir) // Download the PDF
+	for _, urls := range remoteAPIURL {
+		getData = append(getData, getDataFromURL(urls)) // If not, download HTML content from URL
+		// Extract all PDF links from the combined HTML content
+		finalPDFList := extractPDFUrls(strings.Join(getData, "")) // Extract all PDF links from HTML content
+		// Remove duplicates from a given slice.
+		finalPDFList = removeDuplicatesFromSlice(finalPDFList)
+		// Loop through all extracted PDF URLs
+		for _, urls := range finalPDFList {
+			urls = getFinalURL(urls) // Get the final URL after navigation
+			if isUrlValid(urls) {    // Check if the final URL is valid
+				downloadPDF(urls, outputDir) // Download the PDF
+			}
 		}
 	}
 }
@@ -665,7 +660,7 @@ func main() {
 func getFinalURL(inputURL string) string {
 	// Configure Chrome options for headless browsing and security.
 	opts := append(chromedp.DefaultExecAllocatorOptions[:], // Start with default Chrome options
-		chromedp.Flag("headless", false),    // Run Chrome in headless mode (no UI)
+		chromedp.Flag("headless", false),   // Run Chrome in headless mode (no UI)
 		chromedp.Flag("no-sandbox", true),  // Disable sandbox (required in some environments like Docker)
 		chromedp.Flag("disable-gpu", true), // Disable GPU to avoid issues in headless environments
 	)
@@ -700,7 +695,6 @@ func getFinalURL(inputURL string) string {
 	// Return the final URL after successful navigation.
 	return finalURL
 }
-
 
 // Opens a file in append mode, or creates it, and writes the content to it
 func appendAndWriteToFile(path string, content string) {
@@ -739,7 +733,6 @@ func urlToFilename(rawURL string) string {
 
 	var invalidSubstrings = []string{
 		"_pdf", // Substring to remove from filename
-		"_zip",
 	}
 
 	for _, invalidPre := range invalidSubstrings { // Remove unwanted substrings
@@ -748,6 +741,11 @@ func urlToFilename(rawURL string) string {
 
 	if getFileExtension(safe) == "" { // Ensure file ends with .pdf
 		safe = safe + ext
+	}
+
+	// Check if the file extension is .pdf
+	if ext != ".pdf" {
+		safe = safe + ".pdf" // Append .pdf if not present
 	}
 
 	return safe // Return sanitized filename
@@ -797,8 +795,8 @@ func downloadPDF(finalURL, outputDir string) bool {
 		return false
 	}
 
-	contentType := resp.Header.Get("Content-Type")                                                                  // Get content type of response
-	if !strings.Contains(contentType, "binary/octet-stream") && !strings.Contains(contentType, "application/pdf") { // Check if it's a PDF
+	contentType := resp.Header.Get("Content-Type")                                                        // Get content type of response
+	if !strings.Contains(contentType, "text/html") && !strings.Contains(contentType, "application/pdf") { // Check if it's a PDF
 		log.Printf("Invalid content type for %s: %s (expected binary/octet-stream) (expected application/pdf)", finalURL, contentType)
 		return false
 	}
@@ -869,7 +867,7 @@ func removeDuplicatesFromSlice(slice []string) []string {
 // Extracts all links to PDF files from given HTML string
 func extractPDFUrls(htmlInput string) []string {
 	// Define the regex pattern to match URLs with "/pdf/" in them
-	pdfURLPattern := regexp.MustCompile(`https?://[^"']+/pdf/[^"']+`)
+	pdfURLPattern := regexp.MustCompile(`https?://[^\s'"]+/pdf/\?productID=\d+`)
 
 	// Find all matching URLs
 	matchingURLs := pdfURLPattern.FindAllString(htmlInput, -1)
