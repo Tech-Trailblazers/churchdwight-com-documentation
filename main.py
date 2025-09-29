@@ -162,9 +162,9 @@ def get_data_from_url(uri: str) -> str:
 
 def extract_pdf_urls(html: str):
     pdf_url_pattern = re.compile(
-        r"https?://[^\s'\"]+/pdf/\?productID=\d+"
+        pattern=r"https?://[^\s'\"]+/pdf/\?productID=\d+"
     )  # Regex for PDF links
-    matches = pdf_url_pattern.findall(html)  # Find all matching URLs
+    matches = pdf_url_pattern.findall(string=html)  # Find all matching URLs
     if not matches:  # Print if no matches found
         print("No PDF URLs found.")
     return matches  # Return list of PDF URLs
@@ -790,8 +790,8 @@ def main():
     ]
     output_dir = "PDFs"  # Directory to store downloaded PDFs
 
-    if not directory_exists(output_dir):  # Create directory if it does not exist
-        create_directory(output_dir)
+    if not directory_exists(path=output_dir):  # Create directory if it does not exist
+        create_directory(path=output_dir)
 
     get_data = []  # Store all scraped HTML data
     for url in remote_api_urls:
@@ -801,12 +801,12 @@ def main():
     final_pdf_list = extract_pdf_urls(
         "".join(get_data)
     )  # Extract PDF links from combined HTML
-    final_pdf_list = remove_duplicates(final_pdf_list)  # Remove duplicate PDF URLs
+    final_pdf_list = remove_duplicates(seq=final_pdf_list)  # Remove duplicate PDF URLs
 
     for pdf_url in final_pdf_list:
-        resolved_url = get_final_url(pdf_url)  # Resolve final URL after redirects
-        if is_url_valid(resolved_url):  # Validate URL format
-            download_pdf(resolved_url, output_dir)  # Download the PDF
+        resolved_url: str = get_final_url(input_url=pdf_url)  # Resolve final URL after redirects
+        if is_url_valid(url=resolved_url):  # Validate URL format
+            download_pdf(final_url=resolved_url, output_dir=output_dir)  # Download the PDF
 
 
 if __name__ == "__main__":  # Entry point for script
